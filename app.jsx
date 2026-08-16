@@ -743,7 +743,7 @@ function Onboarding({ lang, onDone }) {
           <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= step ? T.wine : T.line, transition: "background 0.3s" }} />
         ))}
       </div>
-      <div style={{ flex: 1, overflowY: "auto" }}>
+      <div style={{ flex:1, overflowY: "auto" }}>
         <div style={{ fontFamily: displayFont, fontWeight: 700, fontSize: 22, color: T.ink, marginBottom: cur.hint ? 6 : 20, lineHeight: 1.4 }}>{cur.title}</div>
         {cur.hint && <div style={{ fontFamily: bodyFont, fontSize: 12.5, color: T.inkSoft, marginBottom: 18 }}>{cur.hint}</div>}
         {cur.body}
