@@ -644,7 +644,7 @@ function LanguageScreen({ onSelect }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "50px 26px", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
       <div style={{ fontFamily: displayFont, fontWeight: 800, fontSize: 32, color: T.wine, marginBottom: 6 }}>GirlSays <span style={{ fontSize: 20, color: T.rose }}>✦</span></div>
-      <div style={{ fontFamily: bodyFont, fontSize: 13, color: T.inkSoft, marginBottom: 40 }}>Ask. We'll decide. / שאלי. נחליט.</div>
+      <div style={{ fontFamily: bodyFont, fontSize: 13, color: T.inkSoft, marginBottom: 40 }}>Ask. We'll decide. / תשאלי. נחליט.</div>
       <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
         {LANGS.map((l) => (
           <button key={l} className="press" onClick={() => onSelect(l)} style={{ ...primaryBtn, background: T.surface, color: T.wine, border: `1.5px solid ${T.wine}` }}>
