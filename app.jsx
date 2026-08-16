@@ -363,7 +363,8 @@ for (const l of Object.keys(STR_RAW)) STR[l] = l === "en" ? STR_RAW.en : deepMer
 const BACKEND_URL = "/api/claude";
 
 function callClaude(messages, opts = {}, attempt = 1) {
-  const endpoint = window.storage ? "https://api.anthropic.com/v1/messages" : BACKEND_URL;
+  const endpoint = BACKEND_URL;
+
   return fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
