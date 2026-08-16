@@ -349,8 +349,6 @@ const STR_RAW = {
   },
 };
 
-// Fallback merge: any key missing in a language falls back to English rather than
-// crashing or rendering blank — lets us add languages incrementally without risk.
 function deepMerge(base, override) {
   if (Array.isArray(base)) return override !== undefined ? override : base;
   if (typeof base !== "object" || base === null) return override !== undefined ? override : base;
@@ -362,8 +360,6 @@ function deepMerge(base, override) {
 const STR = {};
 for (const l of Object.keys(STR_RAW)) STR[l] = l === "en" ? STR_RAW.en : deepMerge(STR_RAW.en, STR_RAW[l]);
 
-// ============ helpers ============
-// ★ EDIT THIS ONCE YOU HAVE A REAL DEPLOYED BACKEND ★
 const BACKEND_URL = "/api/claude";
 
 function callClaude(messages, opts = {}, attempt = 1) {
@@ -486,7 +482,6 @@ async function incrementAIUsage() {
   return next;
 }
 
-// ============ Small UI atoms ============
 function Chip({ active, onClick, children }) {
   return (
     <button
@@ -645,7 +640,6 @@ const Icon = {
   ),
 };
 
-// ============ Language screen ============
 function LanguageScreen({ onSelect }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "50px 26px", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
@@ -662,7 +656,6 @@ function LanguageScreen({ onSelect }) {
   );
 }
 
-// ============ Intro ============
 function Intro({ lang, onNext, onSkip }) {
   const s = STR[lang].intro;
   return (
@@ -679,7 +672,6 @@ function Intro({ lang, onNext, onSkip }) {
   );
 }
 
-// ============ Onboarding ============
 function Onboarding({ lang, onDone }) {
   const s = STR[lang];
   const [step, setStep] = useState(0);
@@ -768,7 +760,6 @@ function Onboarding({ lang, onDone }) {
   );
 }
 
-// ============ Photo compare (numbered slots, fixed preview) ============
 function PhotoCompare({ profile, lang }) {
   const s = STR[lang].photo;
   const [slots, setSlots] = useState([null, null]);
@@ -907,7 +898,6 @@ function PhotoCompare({ profile, lang }) {
   );
 }
 
-// ============ Product check ============
 function ProductCheck({ profile, lang }) {
   const s = STR[lang].product;
   const [mode, setMode] = useState("text");
@@ -1020,7 +1010,8 @@ function ProductCheck({ profile, lang }) {
       {result?.limitReached && <LimitNote lang={lang} />}
       {result?.error && <ErrorNote lang={lang} message={result.message} />}
     </div>
-  );}
+  );
+}
 
 function ErrorNote({ lang, message }) {
   return (
@@ -1040,7 +1031,6 @@ function LimitNote({ lang }) {
   );
 }
 
-// ============ Nutrition & fitness ============
 function Nutrition({ profile, lang }) {
   const s = STR[lang].nutrition;
   const [question, setQuestion] = useState("");
@@ -1119,7 +1109,6 @@ function Nutrition({ profile, lang }) {
   );
 }
 
-// ============ What should I reply ============
 function ReplyHelper({ lang }) {
   const s = STR[lang].reply;
   const [theirMessage, setTheirMessage] = useState("");
@@ -1220,7 +1209,6 @@ function computeCycleStats(periodDays) {
   return { lastStart, avgCycle, dayInCycle, nextStart, daysUntilNext, hasHistory: starts.length >= 2 };
 }
 
-// ============ Cycle tracker ============
 function CycleTracker({ lang }) {
   const s = STR[lang].cycle;
   const [periodDays, setPeriodDays] = useState([]);
@@ -1369,7 +1357,301 @@ function CycleTracker({ lang }) {
 
       <div style={{ fontFamily: bodyFont, fontSize: 12, color: T.inkSoft, marginTop: 14, lineHeight: 1.6, textAlign: "center" }}>{s.instruction}</div>
     </div>
-  );}
+  );
+}
+
+const ACTIVITY_TYPES = [
+  { id: "walk", metric: "steps", kcalPer: 0.04 },
+  { id: "run", metric: "min", kcalPer: 10 },
+  { id: "strength", metric: "min", kcalPer: 6 },
+  { id: "cycle", metric: "min", kcalPer: 7 },
+  { id: "yoga", metric: "min", kcalPer: 3 },
+  { id: "other", metric: "min", kcalPer: 5 },
+];
+function todayKey(prefix) {
+  return `${prefix}:${new Date().toISOString().slice(0, 10)}`;
+}
+function ActivityLog({ lang }) {
+  const s = STR[lang].activity;
+  const [entries, setEntries] = useState([]);
+  const [type, setType] = useState("walk");
+  const [amount, setAmount] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const storageKey = todayKey("activity");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await storage.get(storageKey);
+        if (r?.value) setEntries(JSON.parse(r.value));
+      } catch (e) {}
+      setLoaded(true);
+    })();
+  }, []);
+
+  async function persist(next) {
+    setEntries(next);
+    try {
+      await storage.set(storageKey, JSON.stringify(next));
+    } catch (e) {}
+  }
+
+  function addEntry() {
+    const n = parseFloat(amount);
+    if (!n || n <= 0) return;
+    const t = ACTIVITY_TYPES.find((a) => a.id === type);
+    const kcal = Math.round(n * t.kcalPer);
+    persist([...entries, { id: Date.now(), type, amount: n, kcal }]);
+    setAmount("");
+  }
+  function removeEntry(id) {
+    persist(entries.filter((e) => e.id !== id));
+  }
+
+  const total = entries.reduce((sum, e) => sum + e.kcal, 0);
+  const t = ACTIVITY_TYPES.find((a) => a.id === type);
+
+  return (
+    <div style={{ padding: "20px 18px 130px" }}>
+      <SectionHeader eyebrow={s.eyebrow} title={s.title} subtitle={s.subtitle} />
+
+      <div style={{ ...card, marginBottom: 16 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 14 }}>
+          {ACTIVITY_TYPES.map((a) => (
+            <Chip key={a.id} active={type === a.id} onClick={() => setType(a.id)}>
+              {s.types[a.id]}
+            </Chip>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input type="number" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={t.metric === "steps" ? s.stepsPh : s.minutesPh} style={{ ...inputStyle, flex: 1 }} />
+          <button className="press" onClick={addEntry} disabled={!amount} style={{ ...primaryBtn, width: "auto", padding: "0 20px", opacity: !amount ? 0.5 : 1 }}>
+            {s.add}
+          </button>
+        </div>
+      </div>
+
+      {loaded && entries.length > 0 && (
+        <>
+          <div style={{ ...card, textAlign: "center", marginBottom: 14 }}>
+            <div style={{ fontFamily: bodyFont, fontWeight: 800, fontSize: 30, color: T.wine }}>{total}</div>
+            <div style={{ fontFamily: bodyFont, fontSize: 12, color: T.inkSoft }}>{s.totalLabel}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {entries.map((e) => (
+              <div key={e.id} style={{ ...card, display: "flex", alignItems: "center", justifyContent: "space-between", padding: 12 }}>
+                <div style={{ fontFamily: bodyFont, fontSize: 13, color: T.ink }}>
+                  {s.types[e.type]} — {e.amount} {ACTIVITY_TYPES.find((a) => a.id === e.type).metric === "steps" ? s.steps : s.min}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ fontFamily: bodyFont, fontWeight: 700, fontSize: 13, color: T.wine }}>{e.kcal} {s.kcal}</div>
+                  <button className="press" onClick={() => removeEntry(e.id)} style={{ background: "none", border: "none", color: T.inkSoft, cursor: "pointer", fontSize: 16, padding: 0 }}>
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div style={{ fontFamily: bodyFont, fontSize: 11, color: T.inkSoft, marginTop: 16, lineHeight: 1.6 }}>{s.disclaimer}</div>
+    </div>
+  );
+}
+
+function FoodLog({ lang }) {
+  const s = STR[lang].food;
+  const [entries, setEntries] = useState([]);
+  const [image, setImage] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [errMsg, setErrMsg] = useState(null);
+  const [limitReached, setLimitReached] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const inputRef = useRef(null);
+  const storageKey = todayKey("food");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await storage.get(storageKey);
+        if (r?.value) setEntries(JSON.parse(r.value));
+      } catch (e) {}
+      setLoaded(true);
+    })();
+  }, []);
+
+  async function persist(next) {
+    setEntries(next);
+    try {
+      await storage.set(storageKey, JSON.stringify(next));
+    } catch (e) {}
+  }
+
+  async function handleFile(file) {
+    if (!file) return;
+    setImage(await resizeImageFile(file));
+  }
+
+  async function analyze() {
+    if (!image) return;
+    const usage = await getAIUsageCount();
+    if (usage >= DAILY_AI_LIMIT) {
+      setLimitReached(true);
+      return;
+    }
+    await incrementAIUsage();
+    setLimitReached(false);
+    setLoading(true);
+    setErrMsg(null);
+    try {
+      const instructions = `Identify the food/meal in this photo. Give a short name and a rough estimated calorie count. Be a reasonable general estimate, not falsely precise. Reply in ${langName(
+        lang
+      )} only. Respond ONLY with valid JSON: {"name": "short food name", "kcal": <number, rough estimate>}`;
+      const content = [
+        { type: "text", text: instructions },
+        { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.base64 } },
+      ];
+      const data = await callClaude([{ role: "user", content }]);
+      const text = data.content.find((c) => c.type === "text")?.text || "{}";
+      const result = extractJson(text);
+      persist([...entries, { id: Date.now(), name: result.name, kcal: result.kcal, url: image.url }]);
+      setImage(null);
+    } catch (e) {
+      setErrMsg(e?.message || String(e));
+    }
+    setLoading(false);
+  }
+  function removeEntry(id) {
+    persist(entries.filter((e) => e.id !== id));
+  }
+
+  const total = entries.reduce((sum, e) => sum + (e.kcal || 0), 0);
+
+  return (
+    <div style={{ padding: "20px 18px 130px" }}>
+      <SectionHeader eyebrow={s.eyebrow} title={s.title} subtitle={s.subtitle} />
+
+      <input ref={inputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => handleFile(e.target.files[0])} />
+      {!image ? (
+        <button className="press" onClick={() => inputRef.current.click()} style={{ ...uploadBox, height: 140, marginBottom: 16 }}>
+          {Icon.food(T.wine)}
+          <div style={{ fontFamily: bodyFont, fontSize: 13.5, color: T.inkSoft, marginTop: 8 }}>{s.uploadLabel}</div>
+        </button>
+      ) : (
+        <div style={{ marginBottom: 16 }}>
+          <img src={image.url} style={{ width: 110, height: 110, objectFit: "cover", borderRadius: 12, border: `1px solid rgba(255,255,255,0.6)`, display: "block", marginBottom: 10 }} />
+          <button className="press" onClick={analyze} disabled={loading} style={{ ...primaryBtn, opacity: loading ? 0.6 : 1 }}>
+            {loading ? s.analyzing : s.analyze}
+          </button>
+        </div>
+      )}
+      {limitReached && <LimitNote lang={lang} />}
+      {errMsg && <ErrorNote lang={lang} message={errMsg} />}
+
+      {loaded && entries.length > 0 && (
+        <>
+          <div style={{ ...card, textAlign: "center", marginBottom: 14, marginTop: 6 }}>
+            <div style={{ fontFamily: bodyFont, fontWeight: 800, fontSize: 30, color: T.wine }}>{total}</div>
+            <div style={{ fontFamily: bodyFont, fontSize: 12, color: T.inkSoft }}>{s.totalLabel}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {entries.map((e) => (
+              <div key={e.id} style={{ ...card, display: "flex", alignItems: "center", gap: 10, padding: 12 }}>
+                {e.url && <img src={e.url} style={{ width: 40, height: 40, objectFit: "cover", borderRadius: 10 }} />}
+                <div style={{ flex: 1, fontFamily: bodyFont, fontSize: 13, color: T.ink }}>{e.name}</div>
+                <div style={{ fontFamily: bodyFont, fontWeight: 700, fontSize: 13, color: T.wine }}>{e.kcal} {s.kcal}</div>
+                <button className="press" onClick={() => removeEntry(e.id)} style={{ background: "none", border: "none", color: T.inkSoft, cursor: "pointer", fontSize: 16, padding: 0 }}>
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div style={{ fontFamily: bodyFont, fontSize: 11, color: T.inkSoft, marginTop: 16, lineHeight: 1.6 }}>{s.disclaimer}</div>
+    </div>
+  );
+}
+
+function Wellness({ profile, lang, onUpdate }) {
+  const s = STR[lang].wellness;
+  const [view, setView] = useState(null);
+  const [todayBurn, setTodayBurn] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await storage.get(todayKey("activity"));
+        if (r?.value) {
+          const entries = JSON.parse(r.value);
+          setTodayBurn(entries.reduce((sum, e) => sum + e.kcal, 0));
+        } else {
+          setTodayBurn(0);
+        }
+      } catch (e) {
+        setTodayBurn(0);
+      }
+    })();
+  }, [view]);
+
+  if (view === "activity") return <BackWrap onBack={() => setView(null)} label={s.back}><ActivityLog lang={lang} /></BackWrap>;
+  if (view === "food") return <BackWrap onBack={() => setView(null)} label={s.back}><FoodLog lang={lang} /></BackWrap>;
+  if (view === "nutrition") return <BackWrap onBack={() => setView(null)} label={s.back}><Nutrition profile={profile} lang={lang} /></BackWrap>;
+  if (view === "talk") return <BackWrap onBack={() => setView(null)} label={s.back}><ReplyHelper lang={lang} /></BackWrap>;
+  if (view === "cycle") return <BackWrap onBack={() => setView(null)} label={s.back}><CycleTracker lang={lang} /></BackWrap>;
+
+  const cards = [
+    { id: "activity", title: s.cardActivity, desc: s.cardActivityDesc, icon: Icon.activity, accent: "wine" },
+    { id: "food", title: s.cardFood, desc: s.cardFoodDesc, icon: Icon.food, accent: "lilac" },
+    { id: "nutrition", title: s.cardNutrition, desc: s.cardNutritionDesc, icon: Icon.calendar, accent: "lilac" },
+    { id: "talk", title: s.cardTalk, desc: s.cardTalkDesc, icon: Icon.wellness, accent: "wine" },
+    { id: "cycle", title: s.cardCycle, desc: s.cardCycleDesc, icon: Icon.product, accent: "wine" },
+  ];
+
+  return (
+    <div style={{ padding: "20px 18px 130px" }}>
+      <SectionHeader eyebrow={STR[lang].brand} title={s.title} subtitle={s.subtitle} />
+
+      <button className="press" onClick={() => setView("activity")} style={{ width: "100%", border: "none", cursor: "pointer", background: T.wineGrad, borderRadius: 22, padding: 20, marginBottom: 16, boxShadow: "0 10px 26px rgba(255,62,127,0.32)", textAlign: "start" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontFamily: bodyFont, fontSize: 11.5, color: "rgba(255,255,255,0.85)", marginBottom: 4 }}>{s.burnLabel}</div>
+            <div style={{ fontFamily: bodyFont, fontWeight: 800, fontSize: 34, color: "#fff" }}>
+              {todayBurn === null ? "–" : todayBurn} <span style={{ fontSize: 15, fontWeight: 500 }}>{s.kcalUnit}</span>
+            </div>
+          </div>
+          <div style={{ width: 46, height: 46, borderRadius: "50%", background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>{Icon.activity("#fff")}</div>
+        </div>
+      </button>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        {cards.map((c) => (
+          <button key={c.id} className="press" onClick={() => setView(c.id)} style={{ ...card, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, textAlign: "start", cursor: "pointer", width: "100%", padding: 16 }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                background: c.accent === "lilac" ? `linear-gradient(135deg, ${T.lilac}, #9560C9)` : T.wineGrad,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                boxShadow: c.accent === "lilac" ? "0 4px 10px rgba(181,126,232,0.35)" : "0 4px 10px rgba(255,62,127,0.3)",
+              }}
+            >
+              {c.icon("#fff")}
+            </div>
+            <div>
+              <div style={{ fontFamily: displayFont, fontWeight: 700, fontSize: 15, color: T.ink, lineHeight: 1.3 }}>{c.title}</div>
+              <div style={{ fontFamily: bodyFont, fontSize: 11.5, color: T.inkSoft, marginTop: 3, lineHeight: 1.4 }}>{c.desc}</div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function BackWrap({ onBack, label, children }) {
   return (
@@ -1384,7 +1666,6 @@ function BackWrap({ onBack, label, children }) {
   );
 }
 
-// ============ Calendar / planner ============
 function CalendarPlanner({ lang }) {
   const s = STR[lang].calendarScreen;
   const [events, setEvents] = useState([]);
@@ -1481,7 +1762,6 @@ function CalendarPlanner({ lang }) {
   );
 }
 
-// ============ App shell ============
 function App() {
   const [lang, setLang] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -1702,5 +1982,3 @@ function App() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-
-
