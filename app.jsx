@@ -1,7 +1,7 @@
 const { useState, useRef, useEffect } = React;
-
-// ============ Design tokens ============
-const T = {
+const SUPABASE_URL = "https://eeawhmyohrhsddpahasq.supabase.co";
+const SUPABASE_KEY = ״sb_publishable_GJj_3-bsUcZ0781jNHQGGg_pRmNUcns״;// ============ Design tokens ============
+const T = {. 
   bg: "linear-gradient(165deg, #FFF1F5 0%, #FFE3ED 45%, #FBD9EC 100%)",
   surface: "rgba(255,255,255,0.92)",
   surfaceSolid: "#FFFFFF",
